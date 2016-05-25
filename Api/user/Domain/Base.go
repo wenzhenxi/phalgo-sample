@@ -1,6 +1,6 @@
 package Domain
 import (
-	"phalgo-sample/Api/user/Model"
+	"phalgo-sample/Api/User/Model"
 )
 
 

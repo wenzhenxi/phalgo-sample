@@ -1,6 +1,6 @@
 package Api
 import (
-	"phalgo-sample/Api/user/Domain"
+	"phalgo-sample/Api/User/Domain"
 )
 
 type Base struct {

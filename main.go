@@ -1,7 +1,7 @@
 package main
 
 import (
-	"phalgo-sample/routes"
+	"phalgo-sample/Routes"
 	"github.com/wenzhenxi/phalgo"
 )
 
@@ -9,7 +9,9 @@ func main() {
 	//初始化ECHO路由
 	phalgo.NewEcho()
 	//初始化配置文件
-	phalgo.NewConfig("conf", "conf")
+	phalgo.NewConfig("Config", "conf")
+	//初始化数据库连接
+	phalgo.NewDB("dbDefault")
 	// Routes 载入路由
 	routes.GetRoutes()
 	//开启服务

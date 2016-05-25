@@ -2,7 +2,7 @@ package routes
 import (
 
 	"github.com/wenzhenxi/phalgo"
-	"phalgo-sample/Api/user/Api"
+	"phalgo-sample/Api/User/Api"
 )
 
 
