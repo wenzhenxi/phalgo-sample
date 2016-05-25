@@ -1,12 +1,12 @@
 package Api
 import (
-	"phalgo-sample/Api/appmarket/1.0/Domain"
+	"phalgo-sample/Api/user/Domain"
 )
 
 type Base struct {
-	App App_Api
+	User User_Api
 }
 
-type App_Api struct {
+type User_Api struct {
 	Domain.Base
 }
