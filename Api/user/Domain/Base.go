@@ -5,9 +5,9 @@ import (
 
 
 type Base struct {
-	Map Domain_Map
+	User Domain_User
 }
 
-type Domain_Map struct {
+type Domain_User struct {
 	Model Model.Base
 }

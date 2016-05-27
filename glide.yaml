@@ -1,0 +1,3 @@
+package: phalgo-sample
+import:
+- package: github.com/wenzhenxi/phalgo

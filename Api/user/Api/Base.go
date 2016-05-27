@@ -8,5 +8,5 @@ type Base struct {
 }
 
 type User_Api struct {
-	Domain.Base
+	Domain Domain.Base
 }
