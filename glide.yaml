@@ -1,3 +1,5 @@
 package: phalgo-sample
 import:
+- package: errors
+- package: github.com/labstack/echo
 - package: github.com/wenzhenxi/phalgo
