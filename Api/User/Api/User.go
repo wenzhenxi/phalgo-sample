@@ -9,8 +9,8 @@ import (
 func (this *User_Api)Hello() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
-		Request := phalgo.Requser{Context:c}
-		Response := phalgo.Response{Context:c}
+		Request := phalgo.NewRequest(c)
+		Response := phalgo.NewResponse(c)
 		defer Request.ErrorLogRecover()
 		return Response.RetSuccess("helloworld")
 	}
@@ -19,8 +19,9 @@ func (this *User_Api)Hello() echo.HandlerFunc {
 func (this *User_Api)GetUserInfo() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
-		Request := phalgo.Requser{Context:c}
-		Response := phalgo.Response{Context:c}
+
+		Request := phalgo.NewRequest(c)
+		Response := phalgo.NewResponse(c)
 		defer Request.ErrorLogRecover()
 
 		id := Request.GetParam("id").GetInt()

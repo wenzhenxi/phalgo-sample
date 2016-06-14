@@ -28,6 +28,10 @@ func preloadCallback(scope *Scope) {
 		for idx, preloadField := range preloadFields {
 			var currentPreloadConditions []interface{}
 
+			if currentScope == nil {
+				continue
+			}
+
 			// if not preloaded
 			if preloadKey := strings.Join(preloadFields[:idx+1], "."); !preloadedMap[preloadKey] {
 
@@ -67,7 +71,9 @@ func preloadCallback(scope *Scope) {
 			// preload next level
 			if idx < len(preloadFields)-1 {
 				currentScope = currentScope.getColumnAsScope(preloadField)
-				currentFields = currentScope.Fields()
+				if currentScope != nil {
+					currentFields = currentScope.Fields()
+				}
 			}
 		}
 	}
@@ -104,8 +110,15 @@ func (scope *Scope) handleHasOnePreload(field *Field, conditions []interface{}) 
 	preloadDB, preloadConditions := scope.generatePreloadDBWithConditions(conditions)
 
 	// find relations
+	query := fmt.Sprintf("%v IN (%v)", toQueryCondition(scope, relation.ForeignDBNames), toQueryMarks(primaryKeys))
+	values := toQueryValues(primaryKeys)
+	if relation.PolymorphicType != "" {
+		query += fmt.Sprintf(" AND %v = ?", scope.Quote(relation.PolymorphicDBName))
+		values = append(values, scope.TableName())
+	}
+
 	results := makeSlice(field.Struct.Type)
-	scope.Err(preloadDB.Where(fmt.Sprintf("%v IN (%v)", toQueryCondition(scope, relation.ForeignDBNames), toQueryMarks(primaryKeys)), toQueryValues(primaryKeys)...).Find(results, preloadConditions...).Error)
+	scope.Err(preloadDB.Where(query, values...).Find(results, preloadConditions...).Error)
 
 	// assign find results
 	var (
@@ -143,8 +156,15 @@ func (scope *Scope) handleHasManyPreload(field *Field, conditions []interface{})
 	preloadDB, preloadConditions := scope.generatePreloadDBWithConditions(conditions)
 
 	// find relations
+	query := fmt.Sprintf("%v IN (%v)", toQueryCondition(scope, relation.ForeignDBNames), toQueryMarks(primaryKeys))
+	values := toQueryValues(primaryKeys)
+	if relation.PolymorphicType != "" {
+		query += fmt.Sprintf(" AND %v = ?", scope.Quote(relation.PolymorphicDBName))
+		values = append(values, scope.TableName())
+	}
+
 	results := makeSlice(field.Struct.Type)
-	scope.Err(preloadDB.Where(fmt.Sprintf("%v IN (%v)", toQueryCondition(scope, relation.ForeignDBNames), toQueryMarks(primaryKeys)), toQueryValues(primaryKeys)...).Find(results, preloadConditions...).Error)
+	scope.Err(preloadDB.Where(query, values...).Find(results, preloadConditions...).Error)
 
 	// assign find results
 	var (

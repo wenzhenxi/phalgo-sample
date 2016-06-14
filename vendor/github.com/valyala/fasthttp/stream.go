@@ -5,6 +5,8 @@ import (
 	"io"
 	"runtime/debug"
 	"sync"
+
+	"github.com/valyala/fasthttp/fasthttputil"
 )
 
 // StreamWriter must write data to w.
@@ -21,12 +23,14 @@ type StreamWriter func(w *bufio.Writer)
 //
 // The returned reader may be passed to Response.SetBodyStream.
 //
-// Close must be called on the returned reader after after all the required data
+// Close must be called on the returned reader after all the required data
 // has been read. Otherwise goroutine leak may occur.
 //
 // See also Response.SetBodyStreamWriter.
 func NewStreamReader(sw StreamWriter) io.ReadCloser {
-	pr, pw := io.Pipe()
+	pc := fasthttputil.NewPipeConns()
+	pw := pc.Conn1()
+	pr := pc.Conn2()
 
 	var bw *bufio.Writer
 	v := streamWriterBufPool.Get()

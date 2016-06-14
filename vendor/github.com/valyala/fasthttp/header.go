@@ -116,6 +116,9 @@ func (h *RequestHeader) SetByteRange(startPos, endPos int) {
 
 // StatusCode returns response status code.
 func (h *ResponseHeader) StatusCode() int {
+	if h.statusCode == 0 {
+		return StatusOK
+	}
 	return h.statusCode
 }
 
@@ -516,6 +519,11 @@ func (h *RequestHeader) IsHead() bool {
 		return false
 	}
 	return bytes.Equal(h.Method(), strHead)
+}
+
+// IsDelete returns true if request method is DELETE.
+func (h *RequestHeader) IsDelete() bool {
+	return bytes.Equal(h.Method(), strDelete)
 }
 
 // IsHTTP11 returns true if the request is HTTP/1.1.
@@ -1379,9 +1387,6 @@ func (h *ResponseHeader) String() string {
 func (h *ResponseHeader) AppendBytes(dst []byte) []byte {
 	statusCode := h.StatusCode()
 	if statusCode < 0 {
-		statusCode = StatusOK
-	}
-	if statusCode == 0 {
 		statusCode = StatusOK
 	}
 	dst = append(dst, statusLine(statusCode)...)

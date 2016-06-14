@@ -272,6 +272,7 @@ type Server struct {
 	Logger Logger
 
 	concurrency      uint32
+	concurrencyCh    chan struct{}
 	perIPConnCounter perIPConnCounter
 	serverName       atomic.Value
 
@@ -285,12 +286,24 @@ type Server struct {
 // TimeoutHandler creates RequestHandler, which returns StatusRequestTimeout
 // error with the given msg to the client if h didn't return during
 // the given duration.
+//
+// The returned handler may return StatusTooManyRequests error with the given
+// msg to the client if there are more than Server.Concurrency concurrent
+// handlers h are running at the moment.
 func TimeoutHandler(h RequestHandler, timeout time.Duration, msg string) RequestHandler {
 	if timeout <= 0 {
 		return h
 	}
 
 	return func(ctx *RequestCtx) {
+		concurrencyCh := ctx.s.concurrencyCh
+		select {
+		case concurrencyCh <- struct{}{}:
+		default:
+			ctx.Error(msg, StatusTooManyRequests)
+			return
+		}
+
 		ch := ctx.timeoutCh
 		if ch == nil {
 			ch = make(chan struct{}, 1)
@@ -299,6 +312,7 @@ func TimeoutHandler(h RequestHandler, timeout time.Duration, msg string) Request
 		go func() {
 			h(ctx)
 			ch <- struct{}{}
+			<-concurrencyCh
 		}()
 		ctx.timeoutTimer = initTimer(ctx.timeoutTimer, timeout)
 		select {
@@ -330,6 +344,12 @@ func CompressHandler(h RequestHandler) RequestHandler {
 func CompressHandlerLevel(h RequestHandler, level int) RequestHandler {
 	return func(ctx *RequestCtx) {
 		h(ctx)
+		ce := ctx.Response.Header.PeekBytes(strContentEncoding)
+		if len(ce) > 0 {
+			// Do not compress responses with non-empty
+			// Content-Encoding.
+			return
+		}
 		if ctx.Request.Header.HasAcceptEncodingBytes(strGzip) {
 			ctx.Response.gzipBody(level)
 		} else if ctx.Request.Header.HasAcceptEncodingBytes(strDeflate) {
@@ -627,7 +647,7 @@ func (ctx *RequestCtx) Host() []byte {
 
 // QueryArgs returns query arguments from RequestURI.
 //
-// It doesn't return POST'ed arguments - use PostArge() for this.
+// It doesn't return POST'ed arguments - use PostArgs() for this.
 //
 // Returned arguments are valid until returning from RequestHandler.
 //
@@ -760,6 +780,11 @@ func (ctx *RequestCtx) IsPost() bool {
 // IsPut returns true if request method is PUT.
 func (ctx *RequestCtx) IsPut() bool {
 	return ctx.Request.Header.IsPut()
+}
+
+// IsDelete returns true if request method is DELETE.
+func (ctx *RequestCtx) IsDelete() bool {
+	return ctx.Request.Header.IsDelete()
 }
 
 // Method return request method.
@@ -1000,6 +1025,11 @@ func (ctx *RequestCtx) SetBodyStreamWriter(sw StreamWriter) {
 	ctx.Response.SetBodyStreamWriter(sw)
 }
 
+// IsBodyStream returns true if response body is set via SetBodyStream*.
+func (ctx *RequestCtx) IsBodyStream() bool {
+	return ctx.Response.IsBodyStream()
+}
+
 // Logger returns logger, which may be used for logging arbitrary
 // request-specific messages inside RequestHandler.
 //
@@ -1068,9 +1098,12 @@ func (ctx *RequestCtx) TimeoutErrorWithResponse(resp *Response) {
 	ctx.timeoutResponse = respCopy
 }
 
-// ListenAndServe serves HTTP requests from the given TCP addr.
+// ListenAndServe serves HTTP requests from the given TCP4 addr.
+//
+// Pass custom listener to Serve if you need listening on non-TCP4 media
+// such as IPv6.
 func (s *Server) ListenAndServe(addr string) error {
-	ln, err := net.Listen("tcp", addr)
+	ln, err := net.Listen("tcp4", addr)
 	if err != nil {
 		return err
 	}
@@ -1096,22 +1129,28 @@ func (s *Server) ListenAndServeUNIX(addr string, mode os.FileMode) error {
 	return s.Serve(ln)
 }
 
-// ListenAndServeTLS serves HTTPS requests from the given TCP addr.
+// ListenAndServeTLS serves HTTPS requests from the given TCP4 addr.
 //
 // certFile and keyFile are paths to TLS certificate and key files.
+//
+// Pass custom listener to Serve if you need listening on non-TCP4 media
+// such as IPv6.
 func (s *Server) ListenAndServeTLS(addr, certFile, keyFile string) error {
-	ln, err := net.Listen("tcp", addr)
+	ln, err := net.Listen("tcp4", addr)
 	if err != nil {
 		return err
 	}
 	return s.ServeTLS(ln, certFile, keyFile)
 }
 
-// ListenAndServeTLSEmbed serves HTTPS requests from the given TCP addr.
+// ListenAndServeTLSEmbed serves HTTPS requests from the given TCP4 addr.
 //
 // certData and keyData must contain valid TLS certificate and key data.
+//
+// Pass custom listener to Serve if you need listening on arbitrary media
+// such as IPv6.
 func (s *Server) ListenAndServeTLSEmbed(addr string, certData, keyData []byte) error {
-	ln, err := net.Listen("tcp", addr)
+	ln, err := net.Listen("tcp4", addr)
 	if err != nil {
 		return err
 	}
@@ -1179,6 +1218,7 @@ func (s *Server) Serve(ln net.Listener) error {
 	var err error
 
 	maxWorkersCount := s.getConcurrency()
+	s.concurrencyCh = make(chan struct{}, maxWorkersCount)
 	wp := &workerPool{
 		WorkerFunc:      s.serveConn,
 		MaxWorkersCount: maxWorkersCount,

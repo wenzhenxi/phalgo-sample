@@ -10,6 +10,14 @@ import (
 	"testing"
 )
 
+func TestResponseHeaderDefaultStatusCode(t *testing.T) {
+	var h ResponseHeader
+	statusCode := h.StatusCode()
+	if statusCode != StatusOK {
+		t.Fatalf("unexpected status code: %d. Expecting %d", statusCode, StatusOK)
+	}
+}
+
 func TestResponseHeaderDelClientCookie(t *testing.T) {
 	cookieName := "foobar"
 
@@ -793,6 +801,9 @@ func TestRequestHeaderEmptyMethod(t *testing.T) {
 	if h.IsHead() {
 		t.Fatalf("empty method cannot be HEAD")
 	}
+	if h.IsDelete() {
+		t.Fatalf("empty method cannot be DELETE")
+	}
 }
 
 func TestResponseHeaderHTTPVer(t *testing.T) {
@@ -1250,6 +1261,38 @@ func TestRequestHeaderCookie(t *testing.T) {
 	}
 	if len(h.Cookie("привет")) > 0 {
 		t.Fatalf("Unexpected cookie found: %q", h.Cookie("привет"))
+	}
+}
+
+func TestRequestHeaderMethod(t *testing.T) {
+	// common http methods
+	testRequestHeaderMethod(t, "GET")
+	testRequestHeaderMethod(t, "POST")
+	testRequestHeaderMethod(t, "HEAD")
+	testRequestHeaderMethod(t, "DELETE")
+
+	// non-http methods
+	testRequestHeaderMethod(t, "foobar")
+	testRequestHeaderMethod(t, "ABC")
+}
+
+func testRequestHeaderMethod(t *testing.T, expectedMethod string) {
+	var h RequestHeader
+	h.SetMethod(expectedMethod)
+	m := h.Method()
+	if string(m) != expectedMethod {
+		t.Fatalf("unexpected method: %q. Expecting %q", m, expectedMethod)
+	}
+
+	s := h.String()
+	var h1 RequestHeader
+	br := bufio.NewReader(bytes.NewBufferString(s))
+	if err := h1.Read(br); err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+	m1 := h1.Method()
+	if string(m) != string(m1) {
+		t.Fatalf("unexpected method: %q. Expecting %q", m, m1)
 	}
 }
 

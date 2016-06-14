@@ -1,10 +1,10 @@
-package phalgo
-
 //	PhalGo-Response
 //	返回json参数,默认结构code,data,msg
 //	喵了个咪 <wenzhenxi@vip.qq.com> 2016/5/11
 //  依赖情况:
 //          "github.com/labstack/echo" 必须基于echo路由
+
+package phalgo
 
 import (
 	"github.com/labstack/echo"
@@ -20,6 +20,14 @@ type RetParameter struct {
 	Code int         `json:"code"`
 	Data interface{} `json:"data"`
 	Msg  string     `json:"msg"`
+}
+
+//初始化Response
+func NewResponse(c echo.Context) *Response {
+
+	R := new(Response)
+	R.Context = c
+	return R
 }
 
 // 返回自定自定义的消息Json格式
