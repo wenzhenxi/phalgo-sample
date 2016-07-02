@@ -11,8 +11,17 @@ func (this *User_Api)Hello() echo.HandlerFunc {
 	return func(c echo.Context) error {
 		Request := phalgo.NewRequest(c)
 		Response := phalgo.NewResponse(c)
+
+		Request.SetJson("{}")
+		name := Request.JsonParam("name").SetDefault("喵咪").GetString()
+
+		//参数过滤error处理
+		if err := Request.GetError(); err != nil {
+			return Response.RetError(err, -1)
+		}
+
 		defer Request.ErrorLogRecover()
-		return Response.RetSuccess("helloworld")
+		return Response.RetSuccess("hello Phalgo " + name)
 	}
 }
 
@@ -25,6 +34,12 @@ func (this *User_Api)GetUserInfo() echo.HandlerFunc {
 		defer Request.ErrorLogRecover()
 
 		id := Request.GetParam("id").GetInt()
+
+		//参数过滤error处理
+		if err := Request.GetError(); err != nil {
+			return Response.RetError(err, -1)
+		}
+
 		user, err := this.Domain.User.GetUserInfo(id)
 		if err != nil {
 			return Response.RetError(err, 400)
