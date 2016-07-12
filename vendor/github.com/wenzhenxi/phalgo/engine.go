@@ -14,13 +14,26 @@ import (
 	"net/http"
 )
 
-var Echo *echo.Echo
+const (
+	RETJSON = 1
+	RETMXL = 2
+)
 
+var (
+	Echo *echo.Echo
+	RetType int = 1
+)
 // 初始化echo实例
 func NewEcho() *echo.Echo {
 
 	Echo = echo.New()
 	return Echo
+}
+
+// 设置Ret格式
+func SetRetType(i int) {
+
+	RetType = i
 }
 
 // 使用Fasthttp方式开启服务
@@ -41,9 +54,14 @@ func Recover() {
 	Echo.Use(middleware.Recover())
 }
 
-//是否开启debug
+// 是否开启debug
 func SetDebug(on bool) {
 	Echo.SetDebug(on)
+}
+
+// 获取debug状态
+func Debug() bool {
+	return Echo.Debug()
 }
 
 // 打印请求信息

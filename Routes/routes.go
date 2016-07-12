@@ -12,4 +12,5 @@ func GetRoutes() {
 
 	phalgo.Echo.Any("/GetUserInfo", Api.User.GetUserInfo())
 	phalgo.Echo.Any("/hello", Api.User.Hello())
+
 }

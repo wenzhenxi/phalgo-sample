@@ -11,17 +11,16 @@ func (this *User_Api)Hello() echo.HandlerFunc {
 	return func(c echo.Context) error {
 		Request := phalgo.NewRequest(c)
 		Response := phalgo.NewResponse(c)
+		defer Request.ErrorLogRecover()
 
-		Request.SetJson("{}")
-		name := Request.JsonParam("name").SetDefault("喵咪").GetString()
+		name := Request.Param("name").Max(30).SetDefault("喵咪").GetString()
 
 		//参数过滤error处理
 		if err := Request.GetError(); err != nil {
 			return Response.RetError(err, -1)
 		}
-
-		defer Request.ErrorLogRecover()
-		return Response.RetSuccess("hello Phalgo " + name)
+		
+		return Response.RetSuccess("hello " + name + " Welcome to PhalGo world")
 	}
 }
 

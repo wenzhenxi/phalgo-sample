@@ -8,6 +8,8 @@ import (
 func main() {
 	//初始化ECHO路由
 	phalgo.NewEcho()
+	//设置返回格式
+	phalgo.SetRetType(phalgo.RETJSON)
 	//初始化配置文件
 	phalgo.NewConfig("Config", "conf")
 	//初始化数据库连接
