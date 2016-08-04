@@ -19,3 +19,12 @@ func (this *User)GetInfoById(id int) (User, error) {
 	err := phalgo.GetORM().Where("id = ?", id).First(&User).Error
 	return User, err
 }
+
+func (this *User)GetList() ([]User,error) {
+	UserList := []User{}
+	err := phalgo.GetORM().Find(&UserList).Error
+	if err != nil {
+		return nil,err
+	}
+	return UserList,nil
+}

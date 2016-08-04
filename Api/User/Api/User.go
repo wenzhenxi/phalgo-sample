@@ -47,3 +47,26 @@ func (this *User_Api)GetUserInfo() echo.HandlerFunc {
 		return Response.RetSuccess(user)
 	}
 }
+
+func (this *User_Api)GetUserList() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		Request := phalgo.NewRequest(c)
+		Response := phalgo.NewResponse(c)
+		defer Request.ErrorLogRecover()
+
+		//参数过滤error处理
+		if err := Request.GetError(); err != nil {
+			return Response.RetError(err, -1)
+		}
+
+		user, err := this.Domain.User.GetUserList()
+		if err != nil {
+			return Response.RetError(err, 400)
+		}
+
+		return Response.RetSuccess(user)
+	}
+}
+

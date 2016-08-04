@@ -16,3 +16,4 @@ CREATE TABLE `user` (
 -- Records of user
 -- ----------------------------
 INSERT INTO `user` VALUES ('0', '喵了个咪', 'abc123', 'wenzhenxi@vip.qq.com');
+INSERT INTO `user` VALUES ('1', '测试账号', '666666', 'test@vip.com');
