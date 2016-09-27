@@ -17,6 +17,31 @@ import (
 	"github.com/valyala/fasthttp/fasthttputil"
 )
 
+func TestRequestCtxIsTLS(t *testing.T) {
+	var ctx RequestCtx
+
+	// tls.Conn
+	ctx.c = &tls.Conn{}
+	if !ctx.IsTLS() {
+		t.Fatalf("IsTLS must return true")
+	}
+
+	// non-tls.Conn
+	ctx.c = &readWriter{}
+	if ctx.IsTLS() {
+		t.Fatalf("IsTLS must return false")
+	}
+
+	// overriden tls.Conn
+	ctx.c = &struct {
+		*tls.Conn
+		fooBar bool
+	}{}
+	if !ctx.IsTLS() {
+		t.Fatalf("IsTLS must return true")
+	}
+}
+
 func TestRequestCtxRedirect(t *testing.T) {
 	testRequestCtxRedirect(t, "http://qqq/", "", "http://qqq/")
 	testRequestCtxRedirect(t, "http://qqq/foo/bar?baz=111", "", "http://qqq/foo/bar?baz=111")
@@ -34,6 +59,7 @@ func TestRequestCtxRedirect(t *testing.T) {
 	testRequestCtxRedirect(t, "http://qqq/foo/bar?baz=111", "./.././../x.html", "http://qqq/x.html")
 	testRequestCtxRedirect(t, "http://qqq/foo/bar?baz=111", "http://foo.bar/baz", "http://foo.bar/baz")
 	testRequestCtxRedirect(t, "http://qqq/foo/bar?baz=111", "https://foo.bar/baz", "https://foo.bar/baz")
+	testRequestCtxRedirect(t, "https://foo.com/bar?aaa", "//google.com/aaa?bb", "https://google.com/aaa?bb")
 }
 
 func testRequestCtxRedirect(t *testing.T, origURL, redirectURL, expectedURL string) {
@@ -60,6 +86,9 @@ func TestServerResponseServerHeader(t *testing.T) {
 			} else {
 				ctx.WriteString("OK")
 			}
+
+			// make sure the server name is sent to the client after ctx.Response.Reset()
+			ctx.NotFound()
 		},
 		Name: serverName,
 	}
@@ -89,11 +118,14 @@ func TestServerResponseServerHeader(t *testing.T) {
 			t.Fatalf("unexpected error: %s", err)
 		}
 
-		if resp.StatusCode() != StatusOK {
-			t.Fatalf("unexpected status code: %d. Expecting %d", resp.StatusCode(), StatusOK)
+		if resp.StatusCode() != StatusNotFound {
+			t.Fatalf("unexpected status code: %d. Expecting %d", resp.StatusCode(), StatusNotFound)
 		}
-		if string(resp.Body()) != "OK" {
-			t.Fatalf("unexpected body: %q. Expecting %q", resp.Body(), "OK")
+		if string(resp.Body()) != "404 Page not found" {
+			t.Fatalf("unexpected body: %q. Expecting %q", resp.Body(), "404 Page not found")
+		}
+		if string(resp.Header.Server()) != serverName {
+			t.Fatalf("unexpected server header: %q. Expecting %q", resp.Header.Server(), serverName)
 		}
 		if err = c.Close(); err != nil {
 			t.Fatalf("unexpected error: %s", err)
@@ -1024,6 +1056,17 @@ func TestRequestCtxUserValue(t *testing.T) {
 		if !ok || n != i {
 			t.Fatalf("unexpected value obtained for key %q: %v. Expecting %d", k, v, i)
 		}
+	}
+	vlen := 0
+	ctx.VisitUserValues(func(key []byte, value interface{}) {
+		vlen++
+		v := ctx.UserValueBytes(key)
+		if v != value {
+			t.Fatalf("unexpected value obtained from VisitUserValues for key: %q, expecting: %#v but got: %#v", key, v, value)
+		}
+	})
+	if len(ctx.userValues) != vlen {
+		t.Fatalf("the length of user values returned from VisitUserValues is not equal to the length of the userValues, expecting: %d but got: %d", len(ctx.userValues), vlen)
 	}
 }
 

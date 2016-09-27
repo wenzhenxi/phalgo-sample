@@ -3,6 +3,7 @@ package Api
 import (
 	"github.com/labstack/echo"
 	"github.com/wenzhenxi/phalgo"
+	"fmt"
 )
 
 
@@ -55,6 +56,9 @@ func (this *User_Api)GetUserList() echo.HandlerFunc {
 		Request := phalgo.NewRequest(c)
 		Response := phalgo.NewResponse(c)
 		defer Request.ErrorLogRecover()
+
+		Request.SetJson(`{"handle" : "fa0c7f9e6136ee5a42a384f069c4827f","memberidx" : 12,"leagueidx" : 22,"handleid" : "15062212900"}`)
+		fmt.Println(Request.JsonParam("memberidx").GetInt())
 
 		//参数过滤error处理
 		if err := Request.GetError(); err != nil {

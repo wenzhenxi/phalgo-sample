@@ -307,6 +307,12 @@ func TestOrderAndPluck(t *testing.T) {
 	DB.Save(&user1).Save(&user2).Save(&user3)
 	scopedb := DB.Model(&User{}).Where("name like ?", "%OrderPluckUser%")
 
+	var user User
+	scopedb.Order(gorm.Expr("name = ? DESC", "OrderPluckUser2")).First(&user)
+	if user.Name != "OrderPluckUser2" {
+		t.Errorf("Order with sql expression")
+	}
+
 	var ages []int64
 	scopedb.Order("age desc").Pluck("age", &ages)
 	if ages[0] != 20 {
@@ -622,6 +628,8 @@ func TestSelectWithVariables(t *testing.T) {
 			t.Errorf("Should only contains one column")
 		}
 	}
+
+	rows.Close()
 }
 
 func TestSelectWithArrayInput(t *testing.T) {

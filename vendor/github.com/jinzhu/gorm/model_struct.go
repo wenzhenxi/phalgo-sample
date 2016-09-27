@@ -175,6 +175,10 @@ func (scope *Scope) GetModelStruct() *ModelStruct {
 					field.HasDefaultValue = true
 				}
 
+				if _, ok := field.TagSettings["AUTO_INCREMENT"]; ok && !field.IsPrimaryKey {
+					field.HasDefaultValue = true
+				}
+
 				indirectType := fieldStruct.Type
 				for indirectType.Kind() == reflect.Ptr {
 					indirectType = indirectType.Elem()
@@ -184,6 +188,13 @@ func (scope *Scope) GetModelStruct() *ModelStruct {
 				if _, isScanner := fieldValue.(sql.Scanner); isScanner {
 					// is scanner
 					field.IsScanner, field.IsNormal = true, true
+					if indirectType.Kind() == reflect.Struct {
+						for i := 0; i < indirectType.NumField(); i++ {
+							for key, value := range parseTagSetting(indirectType.Field(i).Tag) {
+								field.TagSettings[key] = value
+							}
+						}
+					}
 				} else if _, isTime := fieldValue.(*time.Time); isTime {
 					// is time
 					field.IsNormal = true
@@ -192,6 +203,9 @@ func (scope *Scope) GetModelStruct() *ModelStruct {
 					for _, subField := range scope.New(fieldValue).GetStructFields() {
 						subField = subField.clone()
 						subField.Names = append([]string{fieldStruct.Name}, subField.Names...)
+						if prefix, ok := field.TagSettings["EMBEDDED_PREFIX"]; ok {
+							subField.DBName = prefix + subField.DBName
+						}
 						if subField.IsPrimaryKey {
 							modelStruct.PrimaryFields = append(modelStruct.PrimaryFields, subField)
 						}

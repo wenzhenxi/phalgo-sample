@@ -32,14 +32,6 @@ func init() {
 		panic(fmt.Sprintf("No error should happen when connecting to test database, but got err=%+v", err))
 	}
 
-	// DB.SetLogger(Logger{log.New(os.Stdout, "\r\n", 0)})
-	// DB.SetLogger(log.New(os.Stdout, "\r\n", 0))
-	if os.Getenv("DEBUG") == "true" {
-		DB.LogMode(true)
-	}
-
-	DB.DB().SetMaxIdleConns(10)
-
 	runMigration()
 }
 
@@ -50,10 +42,18 @@ func OpenTestConnection() (db *gorm.DB, err error) {
 		// CREATE DATABASE gorm;
 		// GRANT ALL ON gorm.* TO 'gorm'@'localhost';
 		fmt.Println("testing mysql...")
-		db, err = gorm.Open("mysql", "gorm:gorm@/gorm?charset=utf8&parseTime=True")
+		dbhost := os.Getenv("GORM_DBADDRESS")
+		if dbhost != "" {
+			dbhost = fmt.Sprintf("tcp(%v)", dbhost)
+		}
+		db, err = gorm.Open("mysql", fmt.Sprintf("gorm:gorm@%v/gorm?charset=utf8&parseTime=True", dbhost))
 	case "postgres":
 		fmt.Println("testing postgres...")
-		db, err = gorm.Open("postgres", "user=gorm DB.name=gorm sslmode=disable")
+		dbhost := os.Getenv("GORM_DBHOST")
+		if dbhost != "" {
+			dbhost = fmt.Sprintf("host=%v ", dbhost)
+		}
+		db, err = gorm.Open("postgres", fmt.Sprintf("%vuser=gorm password=gorm DB.name=gorm sslmode=disable", dbhost))
 	case "foundation":
 		fmt.Println("testing foundation...")
 		db, err = gorm.Open("foundation", "dbname=gorm port=15432 sslmode=disable")
@@ -64,6 +64,15 @@ func OpenTestConnection() (db *gorm.DB, err error) {
 		fmt.Println("testing sqlite3...")
 		db, err = gorm.Open("sqlite3", filepath.Join(os.TempDir(), "gorm.db"))
 	}
+
+	// db.SetLogger(Logger{log.New(os.Stdout, "\r\n", 0)})
+	// db.SetLogger(log.New(os.Stdout, "\r\n", 0))
+	if os.Getenv("DEBUG") == "true" {
+		db.LogMode(true)
+	}
+
+	db.DB().SetMaxIdleConns(10)
+
 	return
 }
 
@@ -72,10 +81,16 @@ func TestStringPrimaryKey(t *testing.T) {
 		ID   string `gorm:"primary_key"`
 		Name string
 	}
+	DB.DropTable(&UUIDStruct{})
 	DB.AutoMigrate(&UUIDStruct{})
 
 	data := UUIDStruct{ID: "uuid", Name: "hello"}
-	if err := DB.Save(&data).Error; err != nil || data.ID != "uuid" {
+	if err := DB.Save(&data).Error; err != nil || data.ID != "uuid" || data.Name != "hello" {
+		t.Errorf("string primary key should not be populated")
+	}
+
+	data = UUIDStruct{ID: "uuid", Name: "hello world"}
+	if err := DB.Save(&data).Error; err != nil || data.ID != "uuid" || data.Name != "hello world" {
 		t.Errorf("string primary key should not be populated")
 	}
 }
@@ -529,6 +544,12 @@ func TestJoins(t *testing.T) {
 	DB.Joins("join emails on emails.user_id = users.id AND emails.email = ?", "join1@example.com").Joins("join credit_cards on credit_cards.user_id = users.id AND credit_cards.number = ?", "422222222222").Where("name = ?", "joins").First(&users4)
 	if len(users4) != 0 {
 		t.Errorf("should find no user when searching with unexisting credit card")
+	}
+
+	var users5 []User
+	db5 := DB.Joins("join emails on emails.user_id = users.id AND emails.email = ?", "join1@example.com").Joins("join credit_cards on credit_cards.user_id = users.id AND credit_cards.number = ?", "411111111111").Where(User{Id: 1}).Where(Email{Id: 1}).Not(Email{Id: 10}).First(&users5)
+	if db5.Error != nil {
+		t.Errorf("Should not raise error for join where identical fields in different tables. Error: %s", db5.Error.Error())
 	}
 }
 
